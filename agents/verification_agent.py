@@ -1,69 +1,57 @@
-import json  # Import for JSON serialization
-from ibm_watsonx_ai.foundation_models import ModelInference
-from ibm_watsonx_ai import Credentials, APIClient
+
+from langchain_openai import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate
+from langchain.schema.output_parser import StrOutputParser
 from typing import Dict, List
 from langchain.schema import Document
-
-credentials = Credentials(
-                   url = "https://us-south.ml.cloud.ibm.com",
-                  )
-client = APIClient(credentials)
+import json  
 
 class VerificationAgent:
     def __init__(self):
         """
         Initialize the verification agent with the IBM WatsonX ModelInference.
         """
-        # Initialize the WatsonX ModelInference
+        # Initialize the ChatOpenAI llm model
         print("Initializing VerificationAgent with IBM WatsonX ModelInference...")
-        self.model = ModelInference(
-            model_id="ibm/granite-4-h-small", 
-            credentials=credentials,
-            project_id="skills-network",
-            params={
-                "max_tokens": 200,            # Adjust based on desired response length
-                "temperature": 0.0,           # Remove randomness for consistency
-            }
+        self.llm = ChatOpenAI(
+            model="gpt-4o-mini", 
+            max_tokens=200,            # Adjust based on desired response length
+            temperature=0.0,           # Remove randomness for consistency  
         )
         print("ModelInference initialized successfully.")
 
-    def sanitize_response(self, response_text: str) -> str:
-        """
-        Sanitize the LLM's response by stripping unnecessary whitespace.
-        """
-        return response_text.strip()
-
-    def generate_prompt(self, answer: str, context: str) -> str:
+    def _build_prompt(self, answer: str, context: str) -> ChatPromptTemplate:
         """
         Generate a structured prompt for the LLM to verify the answer against the context.
         """
-        prompt = f"""
-        You are an AI assistant designed to verify the accuracy and relevance of answers based on provided context.
 
-        **Instructions:**
-        - Verify the following answer against the provided context.
-        - Check for:
-        1. Direct/indirect factual support (YES/NO)
-        2. Unsupported claims (list any if present)
-        3. Contradictions (list any if present)
-        4. Relevance to the question (YES/NO)
-        - Provide additional details or explanations where relevant.
-        - Respond in the exact format specified below without adding any unrelated information.
+        return ChatPromptTemplate.from_template(
+            """
+            You are an AI assistant designed to verify the accuracy and relevance of answers based on provided context.
 
-        **Format:**
-        Supported: YES/NO
-        Unsupported Claims: [item1, item2, ...]
-        Contradictions: [item1, item2, ...]
-        Relevant: YES/NO
-        Additional Details: [Any extra information or explanations]
+            **Instructions:**
+            - Verify the following answer against the provided context.
+            - Check for:
+            1. Direct/indirect factual support (YES/NO)
+            2. Unsupported claims (list any if present)
+            3. Contradictions (list any if present)
+            4. Relevance to the question (YES/NO)
+            - Provide additional details or explanations where relevant.
+            - Respond in the exact format specified below without adding any unrelated information.
 
-        **Answer:** {answer}
-        **Context:**
-        {context}
+            **Format:**
+            Supported: YES/NO
+            Unsupported Claims: [item1, item2, ...]
+            Contradictions: [item1, item2, ...]
+            Relevant: YES/NO
+            Additional Details: [Any extra information or explanations]
 
-        **Respond ONLY with the above format.**
-        """
-        return prompt
+            **Answer:** {answer}
+            **Context:** {context}
+
+            **Respond ONLY with the above format.**
+            """
+        )
 
     def parse_verification_response(self, response_text: str) -> Dict:
         """
@@ -147,20 +135,19 @@ class VerificationAgent:
         print(f"Combined context length: {len(context)} characters.")
 
         # Create a prompt for the LLM to verify the answer
-        prompt = self.generate_prompt(answer, context)
+        prompt = self._build_prompt(answer, context)
         print("Prompt created for the LLM.")
+
+        # Create a chain: format prompt → send to LLM → parse output to string
+        chain = prompt | self.llm | StrOutputParser()
 
         # Call the LLM to generate the verification report
         try:
             print("Sending prompt to the model...")
-            response = self.model.chat(
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt  # Ensure content is a string
-                    }
-                ]
-            )
+            response = chain.invoke({
+                "answer": answer,   
+                "context": context 
+            })
             print("LLM response received.")
         except Exception as e:
             print(f"Error during model inference: {e}")
@@ -188,8 +175,8 @@ class VerificationAgent:
             }
 
         # Sanitize the response
-        sanitized_response = self.sanitize_response(llm_response) if llm_response else ""
-        if not sanitized_response:
+        stripped_response = llm_response.strip() if llm_response else ""
+        if not stripped_response:
             print("LLM returned an empty response.")
             verification_report = {
                 "Supported": "NO",
@@ -200,7 +187,7 @@ class VerificationAgent:
             }
         else:
             # Parse the response into the expected format
-            verification_report = self.parse_verification_response(sanitized_response)
+            verification_report = self.parse_verification_response(stripped_response)
             if verification_report is None:
                 print("LLM did not respond with the expected format. Using default verification report.")
                 verification_report = {
