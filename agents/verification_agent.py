@@ -144,7 +144,7 @@ class VerificationAgent:
         # Call the LLM to generate the verification report
         try:
             print("Sending prompt to the model...")
-            response = chain.invoke({
+            llm_response = chain.invoke({
                 "answer": answer,   
                 "context": context 
             })
@@ -155,7 +155,7 @@ class VerificationAgent:
 
         # Extract and process the LLM's response
         try:
-            llm_response = response['choices'][0]['message']['content'].strip()
+            llm_response = llm_response.strip()
             print(f"Raw LLM response:\n{llm_response}")
         except (IndexError, KeyError) as e:
             print(f"Unexpected response structure: {e}")
