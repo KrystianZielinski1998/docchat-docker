@@ -6,3 +6,6 @@ document_cache/
 venv/
 app.log
 .DS_Store
+.git/
+.gitignore
+.dockerignore
