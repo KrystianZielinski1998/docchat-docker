@@ -187,7 +187,12 @@ def main():
             outputs=[answer_output, verification_output, session_state]
         )
 
-    demo.launch(server_name="127.0.0.1", server_port=5000, share=True)
+    # Make Gradio listen on all network interfaces (0.0.0.0) and port 7860
+    # to allow external access (e.g., on AWS ECS).
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=7860
+    )
 
 def _get_file_hashes(uploaded_files: List) -> frozenset:
     """Generate SHA-256 hashes for uploaded files."""
