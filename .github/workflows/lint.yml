@@ -1,4 +1,4 @@
-name: Lint and Format Python Code
+name: Lint Python Code
 
 on:
   push:
@@ -9,16 +9,27 @@ on:
       - main
 
 jobs:
-  format:
+  lint:
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Auto-format code
-        run: |
-          ruff format .
-          ruff check --fix .
+        uses: chartboost/ruff-action@v1
+        with:
+          args: format .
+
+      - name: Auto-fix linting issues
+        uses: chartboost/ruff-action@v1
+        with:
+          args: check --fix .
+
+      - name: Run Ruff (linting)
+        uses: chartboost/ruff-action@v1
+        with:
+          args: check --output-format=github .
 
       - name: Commit formatted code
         uses: stefanzweifel/git-auto-commit-action@v5
@@ -26,15 +37,3 @@ jobs:
           commit_message: "style: auto-format by Ruff"
           commit_user_name: "Ruff Bot"
           commit_user_email: "ruff@users.noreply.github.com"
-
-  lint:
-    needs: format  # ⬅️ CZEKA NA FORMATOWANIE
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Run Ruff (linting)
-        uses: chartboost/ruff-action@v1
-        with:
-          args: check --output-format=github
