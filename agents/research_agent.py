@@ -4,7 +4,7 @@ from langchain.schema.output_parser import StrOutputParser
 from typing import Dict, List
 from langchain.schema import Document
 import json
-
+from utils.logging import logger
 
 class ResearchAgent:
     def __init__(self):
@@ -63,11 +63,10 @@ class ResearchAgent:
                "question": question,
                "context": context     
             })
-            
-        except Exception as e:
-            logger.error(f"Error during ResearchAgent inference: {e}")
-            raise RuntimeError("Failed to generate answer due to a model error.") from e
 
+        except (ValueError, KeyError, TypeError) as e:
+            logger.error(f"Error during ResearchAgent inference: {e}")
+            raise RuntimeError("Failed to generate answer due to a model error.") from e  
 
         # Sanitize the response
         draft_answer = llm_response.strip() if llm_response else "I cannot answer this question based on the provided documents."

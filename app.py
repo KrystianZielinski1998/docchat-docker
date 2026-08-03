@@ -180,9 +180,6 @@ def main():
             except (ValueError, KeyError, TypeError) as e:
                 logger.error(f"Processing error: {str(e)}")
                 return f"❌ Error: {str(e)}", "", state
-            except Exception as e:
-                logger.error(f" Unknown processing error: {str(e)}")
-                return f"❌ Unknown Error: {str(e)}", "", state
 
         submit_btn.click(
             fn=process_question,

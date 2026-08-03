@@ -5,6 +5,7 @@ from langchain.schema.output_parser import StrOutputParser
 from typing import Dict, List
 from langchain.schema import Document
 import json  
+from utils.logging import logger
 
 class VerificationAgent:
     def __init__(self):
@@ -94,9 +95,7 @@ class VerificationAgent:
         except (ValueError, KeyError, TypeError) as e:
             logger.error(f"Error parsing verification response: {e}")
             return "NO_MATCH"
-        except Exception as e:
-            logger.error(f"Unexpected error parsing verification response: {e}")
-            return "NO_MATCH"
+
 
     def format_verification_report(self, verification: Dict) -> str:
         """

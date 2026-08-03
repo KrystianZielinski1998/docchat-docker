@@ -54,10 +54,7 @@ class DocumentProcessor:
             except (ValueError, KeyError, TypeError) as e:
                 logger.error(f"Failed to process {file.name}: {str(e)}")
                 continue
-            except Exception as e:
-                logger.error(f"Failed to process due to unknown error {file.name}: {str(e)}")
-                continue
-              
+
         logger.info(f"Total unique chunks: {len(all_chunks)}")
         return all_chunks
 

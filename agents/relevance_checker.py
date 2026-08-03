@@ -1,13 +1,9 @@
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema.output_parser import StrOutputParser
-
 from config.settings import settings
 import re
-import logging
-
-logger = logging.getLogger(__name__)
-
+from utils.logging import logger
 
 class RelevanceChecker:
     def __init__(self):
@@ -86,9 +82,6 @@ class RelevanceChecker:
 
         except (ValueError, KeyError, TypeError) as e:
             logger.error(f"Error during RelevanceChecker agent inference: {e}")
-            return "NO_MATCH"
-        except Exception as e:
-            logger.error(f"Unexpected error during RelevanceChecker agent inference: {e}")
             return "NO_MATCH"
 
         # Validate the response
