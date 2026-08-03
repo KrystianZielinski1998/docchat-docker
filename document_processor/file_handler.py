@@ -1,7 +1,7 @@
 import os
 import hashlib
 import pickle
-from datetime import datetime, timedelta
+import time  
 from pathlib import Path
 from typing import List
 from docling.document_converter import DocumentConverter
@@ -50,11 +50,14 @@ class DocumentProcessor:
                     if chunk_hash not in seen_hashes:
                         all_chunks.append(chunk)
                         seen_hashes.add(chunk_hash)
-                        
-            except Exception as e:
+
+            except (ValueError, KeyError, TypeError) as e:
                 logger.error(f"Failed to process {file.name}: {str(e)}")
                 continue
-                
+            except Exception as e:
+                logger.error(f"Failed to process due to unknown error {file.name}: {str(e)}")
+                continue
+              
         logger.info(f"Total unique chunks: {len(all_chunks)}")
         return all_chunks
 
@@ -73,20 +76,25 @@ class DocumentProcessor:
         return hashlib.sha256(content).hexdigest()
 
     def _save_to_cache(self, chunks: List, cache_path: Path):
+        """Save chunks to cache with timestamp"""
         with open(cache_path, "wb") as f:
             pickle.dump({
-                "timestamp": datetime.now().timestamp(),
+                "timestamp": time.time(),  
                 "chunks": chunks
             }, f)
 
     def _load_from_cache(self, cache_path: Path) -> List:
+        """Load chunks from cache"""
         with open(cache_path, "rb") as f:
             data = pickle.load(f)
         return data["chunks"]
 
     def _is_cache_valid(self, cache_path: Path) -> bool:
+        """Check if cache is still valid based on file age"""
         if not cache_path.exists():
             return False
-            
-        cache_age = datetime.now() - datetime.fromtimestamp(cache_path.stat().st_mtime)
-        return cache_age < timedelta(days=settings.CACHE_EXPIRE_DAYS)
+        
+        cache_age_seconds = time.time() - cache_path.stat().st_mtime
+        
+        expire_seconds = settings.CACHE_EXPIRE_DAYS * 24 * 60 * 60
+        return cache_age_seconds < expire_seconds

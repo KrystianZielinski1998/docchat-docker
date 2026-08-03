@@ -9,16 +9,17 @@ import json
 class VerificationAgent:
     def __init__(self):
         """
-        Initialize the verification agent with the IBM WatsonX ModelInference.
+        Initialize the verification agent with the ChatOpenAI.
         """
+
         # Initialize the ChatOpenAI llm model
-        print("Initializing VerificationAgent with IBM WatsonX ModelInference...")
+        logger.info("Initializing VerificationAgent with ChatOpenAI...")
         self.llm = ChatOpenAI(
             model="gpt-4o-mini", 
-            max_tokens=200,            # Adjust based on desired response length
-            temperature=0.0,           # Remove randomness for consistency  
+            max_tokens=200,          
+            temperature=0.0,           
         )
-        print("ModelInference initialized successfully.")
+        logger.info("VerificationAgent initialized successfully.")
 
     def _build_prompt(self, answer: str, context: str) -> ChatPromptTemplate:
         """
@@ -90,9 +91,12 @@ class VerificationAgent:
                         verification[key] = "NO"
 
             return verification
+        except (ValueError, KeyError, TypeError) as e:
+            logger.error(f"Error parsing verification response: {e}")
+            return "NO_MATCH"
         except Exception as e:
-            print(f"Error parsing verification response: {e}")
-            return None
+            logger.error(f"Unexpected error parsing verification response: {e}")
+            return "NO_MATCH"
 
     def format_verification_report(self, verification: Dict) -> str:
         """
@@ -128,37 +132,34 @@ class VerificationAgent:
         """
         Verify the answer against the provided documents.
         """
-        print(f"VerificationAgent.check called with answer='{answer}' and {len(documents)} documents.")
+        logger.debug(f"VerificationAgent.check called with answer='{answer}' and {len(documents)} documents.")
 
         # Combine all document contents into one string without truncation
         context = "\n\n".join([doc.page_content for doc in documents])
-        print(f"Combined context length: {len(context)} characters.")
+        logger.debug(f"Combined context length: {len(context)} characters.")
 
         # Create a prompt for the LLM to verify the answer
         prompt = self._build_prompt(answer, context)
-        print("Prompt created for the LLM.")
+        logger.debug("Prompt created for the LLM.")
 
         # Create a chain: format prompt → send to LLM → parse output to string
         chain = prompt | self.llm | StrOutputParser()
 
         # Call the LLM to generate the verification report
         try:
-            print("Sending prompt to the model...")
             llm_response = chain.invoke({
                 "answer": answer,   
                 "context": context 
             })
-            print("LLM response received.")
         except Exception as e:
-            print(f"Error during model inference: {e}")
+            logger.error(f"Error during model inference: {e}")
             raise RuntimeError("Failed to verify answer due to a model error.") from e
 
         # Extract and process the LLM's response
         try:
             llm_response = llm_response.strip()
-            print(f"Raw LLM response:\n{llm_response}")
         except (IndexError, KeyError) as e:
-            print(f"Unexpected response structure: {e}")
+            logger.debug(f"Unexpected response structure: {e}")
             verification_report = {
                 "Supported": "NO",
                 "Unsupported Claims": [],
@@ -167,8 +168,8 @@ class VerificationAgent:
                 "Additional Details": "Invalid response structure from the model."
             }
             verification_report_formatted = self.format_verification_report(verification_report)
-            print(f"Verification report:\n{verification_report_formatted}")
-            print(f"Context used: {context}")
+            logger.debug(f"Verification report:\n{verification_report_formatted}")
+            logger.debug(f"Context used: {context}")
             return {
                 "verification_report": verification_report_formatted,
                 "context_used": context
@@ -177,7 +178,7 @@ class VerificationAgent:
         # Sanitize the response
         stripped_response = llm_response.strip() if llm_response else ""
         if not stripped_response:
-            print("LLM returned an empty response.")
+            logger.debug("LLM returned an empty response.")
             verification_report = {
                 "Supported": "NO",
                 "Unsupported Claims": [],
@@ -189,7 +190,7 @@ class VerificationAgent:
             # Parse the response into the expected format
             verification_report = self.parse_verification_response(stripped_response)
             if verification_report is None:
-                print("LLM did not respond with the expected format. Using default verification report.")
+                logger.debug("LLM did not respond with the expected format. Using default verification report.")
                 verification_report = {
                     "Supported": "NO",
                     "Unsupported Claims": [],
@@ -200,8 +201,8 @@ class VerificationAgent:
 
         # Format the verification report into a paragraph
         verification_report_formatted = self.format_verification_report(verification_report)
-        print(f"Verification report:\n{verification_report_formatted}")
-        print(f"Context used: {context}")
+        logger.debug(f"Verification report:\n{verification_report_formatted}")
+        logger.debug(f"Context used: {context}")
 
         return {
             "verification_report": verification_report_formatted,

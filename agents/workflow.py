@@ -81,7 +81,7 @@ class AgentWorkflow:
 
     def _decide_after_relevance_check(self, state: AgentState) -> str:
         decision = "relevant" if state["is_relevant"] else "irrelevant"
-        print(f"[DEBUG] _decide_after_relevance_check -> {decision}")
+        logger.debug(f"[DEBUG] _decide_after_relevance_check -> {decision}")
         return decision
     
     def full_pipeline(self, question: str, retriever: EnsembleRetriever):
@@ -110,20 +110,20 @@ class AgentWorkflow:
             raise
     
     def _research_step(self, state: AgentState) -> Dict:
-        print(f"[DEBUG] Entered _research_step with question='{state['question']}'")
+        logger.debug(f"[DEBUG] Entered _research_step with question='{state['question']}'")
         result = self.researcher.generate(state["question"], state["documents"])
-        print("[DEBUG] Researcher returned draft answer.")
+        logger.debug("[DEBUG] Researcher returned draft answer.")
         return {"draft_answer": result["draft_answer"]}
     
     def _verification_step(self, state: AgentState) -> Dict:
-        print("[DEBUG] Entered _verification_step. Verifying the draft answer...")
+        logger.debug("[DEBUG] Entered _verification_step. Verifying the draft answer...")
         result = self.verifier.check(state["draft_answer"], state["documents"])
-        print("[DEBUG] VerificationAgent returned a verification report.")
+        logger.debug("[DEBUG] VerificationAgent returned a verification report.")
         return {"verification_report": result["verification_report"]}
     
     def _decide_next_step(self, state: AgentState) -> str:
         verification_report = state["verification_report"]
-        print(f"[DEBUG] _decide_next_step with verification_report='{verification_report}'")
+        logger.debug(f"[DEBUG] _decide_next_step with verification_report='{verification_report}'")
         if "Supported: NO" in verification_report or "Relevant: NO" in verification_report:
             logger.info("[DEBUG] Verification indicates re-research needed.")
             return "re_research"

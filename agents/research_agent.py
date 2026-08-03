@@ -9,16 +9,16 @@ import json
 class ResearchAgent:
     def __init__(self):
         """
-        Initialize the research agent with the IBM WatsonX ModelInference.
+        Initialize the research agent with ChatOpenAI.
         """
         # Initialize the gpt-4o-mini model
-        print("Initializing ResearchAgent with IBM WatsonX ModelInference...")
+        logger.info("Initializing ResearchAgent with ChatOpenAI...")
         self.llm = ChatOpenAI(
             model="gpt-4o-mini", 
-            max_tokens=300,            # Adjust based on desired response length
-            temperature=0.3           # Controls randomness; lower values make output more deterministic
+            max_tokens=300,          
+            temperature=0.3           
         )
-        print("ResearchAgent initialized successfully.")
+        logger.info("ResearchAgent initialized successfully.")
 
     def _build_prompt(self, question: str, context: str) -> ChatPromptTemplate:
         """
@@ -45,11 +45,11 @@ class ResearchAgent:
         """
         Generate an initial answer using the provided documents.
         """
-        print(f"ResearchAgent.generate called with question='{question}' and {len(documents)} documents.")
+        logger.info(f"ResearchAgent.generate called with question='{question}' and {len(documents)} documents.")
 
         # Combine the top document contents into one string
         context = "\n\n".join([doc.page_content for doc in documents])
-        print(f"Combined context length: {len(context)} characters.")
+        logger.debug(f"Combined context length: {len(context)} characters.")
 
         # Get template prompt
         prompt =  self._build_prompt(question, context)
@@ -59,23 +59,18 @@ class ResearchAgent:
 
         # Call the LLM 
         try:
-            print("Sending prompt to the model...")
             llm_response = chain.invoke({
                "question": question,
                "context": context     
             })
             
-            print("LLM response received.")
-
         except Exception as e:
-            print(f"Error during model inference: {e}")
+            logger.error(f"Error during ResearchAgent inference: {e}")
             raise RuntimeError("Failed to generate answer due to a model error.") from e
 
 
         # Sanitize the response
         draft_answer = llm_response.strip() if llm_response else "I cannot answer this question based on the provided documents."
-
-        print(f"Generated answer: {draft_answer}")
 
         return {
             "draft_answer": draft_answer,

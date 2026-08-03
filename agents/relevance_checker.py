@@ -11,13 +11,18 @@ logger = logging.getLogger(__name__)
 
 class RelevanceChecker:
     def __init__(self):
+        """
+        Initialize the relevance checker agent with ChatOpenAI.
+        """
 
         # Initialize the ChatOpenAI
+        logger.info("Initializing RelevanceChecker Agent with ChatOpenAI...")
         self.llm = ChatOpenAI(
             model="gpt-4o-mini",
             max_tokens=10,
             temperature=0
         )
+        logger.info("RelevanceChecker Agent initialized successfully.")
 
     def _build_prompt(self, question: str, document_content: str) -> ChatPromptTemplate:
         """ Builds a structured prompt template for RelevanceChecker Agent. """
@@ -53,12 +58,12 @@ class RelevanceChecker:
         Returns: "CAN_ANSWER", "PARTIAL", or "NO_MATCH".
         """
 
-        logger.debug(f"RelevanceChecker.check called with question='{question}' and k={k}")
+        logger.info(f"RelevanceChecker.check called with question='{question}' and k={k}")
 
         # Retrieve doc chunks from the ensemble retriever
         top_docs = retriever.invoke(question)
         if not top_docs:
-            logger.debug("No documents returned from retriever.invoke(). Classifying as NO_MATCH.")
+            logger.warning("No documents returned from retriever.invoke(). Classifying as NO_MATCH.")
             return "NO_MATCH"
 
         # Combine the top k chunk texts into one string
@@ -77,12 +82,13 @@ class RelevanceChecker:
                "document_content": document_content     
             })
 
-            # Clean up the response
             llm_response = llm_response.strip().upper()
-            logger.debug(f"LLM response: {llm_response}")
 
+        except (ValueError, KeyError, TypeError) as e:
+            logger.error(f"Error during RelevanceChecker agent inference: {e}")
+            return "NO_MATCH"
         except Exception as e:
-            logger.error(f"Error during model inference: {e}")
+            logger.error(f"Unexpected error during RelevanceChecker agent inference: {e}")
             return "NO_MATCH"
 
         # Validate the response
