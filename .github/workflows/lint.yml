@@ -1,0 +1,47 @@
+name: Lint Python Code
+
+on:
+  push:
+    branches:
+      - 'feature/*'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write  
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}  
+          fetch-depth: 0 
+
+      - name: Auto-format code
+        uses: chartboost/ruff-action@v1
+        with:
+          args: format .
+
+      - name: Auto-fix linting issues
+        uses: chartboost/ruff-action@v1
+        with:
+          args: check --fix .
+
+      - name: Run Ruff (linting)
+        uses: chartboost/ruff-action@v1
+        with:
+          args: check --output-format=github .
+
+      - name: Commit formatted code
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: auto-format by Ruff"
+          commit_user_name: "Ruff Bot"
+          commit_user_email: "ruff@users.noreply.github.com"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
