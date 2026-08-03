@@ -1,4 +1,3 @@
-
 from pydantic_settings import BaseSettings
 
 from .constants import ALLOWED_TYPES, MAX_FILE_SIZE, MAX_TOTAL_SIZE

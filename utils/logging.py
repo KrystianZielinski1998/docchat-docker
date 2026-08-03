@@ -1,6 +1,7 @@
-from loguru import logger
 import sys
 from pathlib import Path
+
+from loguru import logger
 
 # Create logger file
 log_dir = Path("logs")
@@ -14,7 +15,7 @@ logger.add(
     sys.stdout,
     format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan> - <level>{message}</level>",
     level="INFO",
-    colorize=True
+    colorize=True,
 )
 
 # 2. Main logs file for all log types
@@ -24,7 +25,7 @@ logger.add(
     retention="30 days",
     format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} | {message}",
     level="DEBUG",
-    compression="zip"
+    compression="zip",
 )
 
 # 3. Seperate log file for errors
@@ -34,7 +35,7 @@ logger.add(
     retention="90 days",
     format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} | {message}",
     level="ERROR",
-    compression="zip"
+    compression="zip",
 )
 
 # 4. JSON format for log analysis
@@ -43,9 +44,9 @@ logger.add(
     rotation="1 day",
     retention="14 days",
     format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name} | {message}",
-    serialize=True, 
-    level="INFO"
+    serialize=True,
+    level="INFO",
 )
 
 # Export logger
-__all__ = ['logger']
+__all__ = ["logger"]

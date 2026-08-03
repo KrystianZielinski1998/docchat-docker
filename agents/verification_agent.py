@@ -1,4 +1,3 @@
-
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema import Document
 from langchain.schema.output_parser import StrOutputParser
