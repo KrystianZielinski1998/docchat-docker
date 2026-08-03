@@ -1,9 +1,10 @@
-from langchain_openai import ChatOpenAI
+
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema.output_parser import StrOutputParser
-from config.settings import settings
-import re
+from langchain_openai import ChatOpenAI
+
 from utils.logging import logger
+
 
 class RelevanceChecker:
     def __init__(self):
@@ -13,15 +14,11 @@ class RelevanceChecker:
 
         # Initialize the ChatOpenAI
         logger.info("Initializing RelevanceChecker Agent with ChatOpenAI...")
-        self.llm = ChatOpenAI(
-            model="gpt-4o-mini",
-            max_tokens=10,
-            temperature=0
-        )
+        self.llm = ChatOpenAI(model="gpt-4o-mini", max_tokens=10, temperature=0)
         logger.info("RelevanceChecker Agent initialized successfully.")
 
     def _build_prompt(self, question: str, document_content: str) -> ChatPromptTemplate:
-        """ Builds a structured prompt template for RelevanceChecker Agent. """
+        """Builds a structured prompt template for RelevanceChecker Agent."""
 
         return ChatPromptTemplate.from_template(
             """
@@ -54,29 +51,32 @@ class RelevanceChecker:
         Returns: "CAN_ANSWER", "PARTIAL", or "NO_MATCH".
         """
 
-        logger.info(f"RelevanceChecker.check called with question='{question}' and k={k}")
+        logger.info(
+            f"RelevanceChecker.check called with question='{question}' and k={k}"
+        )
 
         # Retrieve doc chunks from the ensemble retriever
         top_docs = retriever.invoke(question)
         if not top_docs:
-            logger.warning("No documents returned from retriever.invoke(). Classifying as NO_MATCH.")
+            logger.warning(
+                "No documents returned from retriever.invoke(). Classifying as NO_MATCH."
+            )
             return "NO_MATCH"
 
         # Combine the top k chunk texts into one string
         document_content = "\n\n".join(doc.page_content for doc in top_docs[:k])
 
         # Get template prompt
-        prompt =  self._build_prompt(question, document_content)
+        prompt = self._build_prompt(question, document_content)
 
         # Create a chain: format prompt → send to LLM → parse output to string
         chain = prompt | self.llm | StrOutputParser()
 
         # Call the LLM
         try:
-            llm_response = chain.invoke({
-               "question": question,
-               "document_content": document_content     
-            })
+            llm_response = chain.invoke(
+                {"question": question, "document_content": document_content}
+            )
 
             llm_response = llm_response.strip().upper()
 

@@ -1,10 +1,11 @@
-from langchain_openai import ChatOpenAI
+
 from langchain.prompts import ChatPromptTemplate
-from langchain.schema.output_parser import StrOutputParser
-from typing import Dict, List
 from langchain.schema import Document
-import json
+from langchain.schema.output_parser import StrOutputParser
+from langchain_openai import ChatOpenAI
+
 from utils.logging import logger
+
 
 class ResearchAgent:
     def __init__(self):
@@ -13,11 +14,7 @@ class ResearchAgent:
         """
         # Initialize the gpt-4o-mini model
         logger.info("Initializing ResearchAgent with ChatOpenAI...")
-        self.llm = ChatOpenAI(
-            model="gpt-4o-mini", 
-            max_tokens=300,          
-            temperature=0.3           
-        )
+        self.llm = ChatOpenAI(model="gpt-4o-mini", max_tokens=300, temperature=0.3)
         logger.info("ResearchAgent initialized successfully.")
 
     def _build_prompt(self, question: str, context: str) -> ChatPromptTemplate:
@@ -41,37 +38,37 @@ class ResearchAgent:
             """
         )
 
-    def generate(self, question: str, documents: List[Document]) -> Dict:
+    def generate(self, question: str, documents: list[Document]) -> dict:
         """
         Generate an initial answer using the provided documents.
         """
-        logger.info(f"ResearchAgent.generate called with question='{question}' and {len(documents)} documents.")
+        logger.info(
+            f"ResearchAgent.generate called with question='{question}' and {len(documents)} documents."
+        )
 
         # Combine the top document contents into one string
         context = "\n\n".join([doc.page_content for doc in documents])
         logger.debug(f"Combined context length: {len(context)} characters.")
 
         # Get template prompt
-        prompt =  self._build_prompt(question, context)
+        prompt = self._build_prompt(question, context)
 
         # Create a chain: format prompt → send to LLM → parse output to string
         chain = prompt | self.llm | StrOutputParser()
 
-        # Call the LLM 
+        # Call the LLM
         try:
-            llm_response = chain.invoke({
-               "question": question,
-               "context": context     
-            })
+            llm_response = chain.invoke({"question": question, "context": context})
 
         except (ValueError, KeyError, TypeError) as e:
             logger.error(f"Error during ResearchAgent inference: {e}")
-            raise RuntimeError("Failed to generate answer due to a model error.") from e  
+            raise RuntimeError("Failed to generate answer due to a model error.") from e
 
         # Sanitize the response
-        draft_answer = llm_response.strip() if llm_response else "I cannot answer this question based on the provided documents."
+        draft_answer = (
+            llm_response.strip()
+            if llm_response
+            else "I cannot answer this question based on the provided documents."
+        )
 
-        return {
-            "draft_answer": draft_answer,
-            "context_used": context
-        }
+        return {"draft_answer": draft_answer, "context_used": context}
