@@ -1,26 +1,27 @@
-import gradio as gr
 import hashlib
-from typing import List, Dict
 import os
 
+import gradio as gr
+
+from agents.workflow import AgentWorkflow
+from config import constants
 from document_processor.file_handler import DocumentProcessor
 from retriever.builder import RetrieverBuilder
-from agents.workflow import AgentWorkflow
-from config import constants, settings
 from utils.logging import logger
 
-# 1) Define some example data 
+# 1) Define some example data
 #    (i.e. question + paths to documents relevant to that question).
 EXAMPLES = {
     "Google 2024 Environmental Report": {
         "question": "Retrieve the data center PUE efficiency values in Singapore 2nd facility in 2019 and 2022. Also retrieve regional average CFE in Asia pacific in 2023",
-        "file_paths": ["examples/google-2024-environmental-report.pdf"]  
+        "file_paths": ["examples/google-2024-environmental-report.pdf"],
     },
     "DeepSeek-R1 Technical Report": {
         "question": "Summarize DeepSeek-R1 model's performance evaluation on all coding tasks against OpenAI o1-mini model",
-        "file_paths": ["examples/DeepSeek Technical Report.pdf"]
-    }
+        "file_paths": ["examples/DeepSeek Technical Report.pdf"],
+    },
 }
+
 
 def main():
     processor = DocumentProcessor()
@@ -81,20 +82,30 @@ def main():
     }
     """
 
-    with gr.Blocks(theme=gr.themes.Citrus(), title="DocChat 🐥", css=css, js=js) as demo:
-        gr.Markdown("## DocChat: powered by Docling 🐥 and LangGraph", elem_classes="subtitle")
+    with gr.Blocks(
+        theme=gr.themes.Citrus(), title="DocChat 🐥", css=css, js=js
+    ) as demo:
+        gr.Markdown(
+            "## DocChat: powered by Docling 🐥 and LangGraph", elem_classes="subtitle"
+        )
         gr.Markdown("# How it works ✨:", elem_classes="title")
-        gr.Markdown("📤 Upload your document(s), enter your query then hit Submit 📝", elem_classes="text")
-        gr.Markdown("Or you can select one of the examples from the drop-down menu, select Load Example then hit Submit 📝", elem_classes="text")
-        gr.Markdown("⚠️ **Note:** DocChat only accepts documents in these formats: '.pdf', '.docx', '.txt', '.md'", elem_classes="text")
+        gr.Markdown(
+            "📤 Upload your document(s), enter your query then hit Submit 📝",
+            elem_classes="text",
+        )
+        gr.Markdown(
+            "Or you can select one of the examples from the drop-down menu, select Load Example then hit Submit 📝",
+            elem_classes="text",
+        )
+        gr.Markdown(
+            "⚠️ **Note:** DocChat only accepts documents in these formats: '.pdf', '.docx', '.txt', '.md'",
+            elem_classes="text",
+        )
 
         # 2) Maintain the session state for retrieving doc changes
-        session_state = gr.State({
-            "file_hashes": frozenset(),
-            "retriever": None
-        })
+        session_state = gr.State({"file_hashes": frozenset(), "retriever": None})
 
-        # 3) Layout 
+        # 3) Layout
         with gr.Row():
             with gr.Column():
                 # Section for Examples
@@ -107,11 +118,13 @@ def main():
                 load_example_btn = gr.Button("Load Example 🛠️")
 
                 # Standard input components
-                files = gr.Files(label="📄 Upload Documents", file_types=constants.ALLOWED_TYPES)
+                files = gr.Files(
+                    label="📄 Upload Documents", file_types=constants.ALLOWED_TYPES
+                )
                 question = gr.Textbox(label="❓ Question", lines=3)
 
                 submit_btn = gr.Button("Submit 🚀")
-                
+
             with gr.Column():
                 answer_output = gr.Textbox(label="🐥 Answer", interactive=False)
                 verification_output = gr.Textbox(label="✅ Verification Report")
@@ -119,7 +132,7 @@ def main():
         # 4) Helper function to load example into the UI
         def load_example(example_key: str):
             """
-            Given a key like 'Example 1', 
+            Given a key like 'Example 1',
             read the relevant docs from disk and return
             them as file-like objects, plus the example question.
             """
@@ -144,13 +157,11 @@ def main():
             return loaded_files, question
 
         load_example_btn.click(
-            fn=load_example,
-            inputs=[example_dropdown],
-            outputs=[files, question]
+            fn=load_example, inputs=[example_dropdown], outputs=[files, question]
         )
 
         # 5) Standard flow for question submission
-        def process_question(question_text: str, uploaded_files: List, state: Dict):
+        def process_question(question_text: str, uploaded_files: list, state: dict):
             """Handle questions with document caching."""
             try:
                 if not question_text.strip():
@@ -159,48 +170,45 @@ def main():
                     raise ValueError("❌ No documents uploaded")
 
                 current_hashes = _get_file_hashes(uploaded_files)
-                
+
                 if state["retriever"] is None or current_hashes != state["file_hashes"]:
                     logger.info("Processing new/changed documents...")
                     chunks = processor.process(uploaded_files)
                     retriever = retriever_builder.build_hybrid_retriever(chunks)
-                    
-                    state.update({
-                        "file_hashes": current_hashes,
-                        "retriever": retriever
-                    })
-                
+
+                    state.update(
+                        {"file_hashes": current_hashes, "retriever": retriever}
+                    )
+
                 result = workflow.full_pipeline(
-                    question=question_text,
-                    retriever=state["retriever"]
+                    question=question_text, retriever=state["retriever"]
                 )
-                
+
                 return result["draft_answer"], result["verification_report"], state
-                    
+
             except (ValueError, KeyError, TypeError) as e:
-                logger.error(f"Processing error: {str(e)}")
-                return f"❌ Error: {str(e)}", "", state
+                logger.error(f"Processing error: {e!s}")
+                return f"❌ Error: {e!s}", "", state
 
         submit_btn.click(
             fn=process_question,
             inputs=[question, files, session_state],
-            outputs=[answer_output, verification_output, session_state]
+            outputs=[answer_output, verification_output, session_state],
         )
 
     # Make Gradio listen on all network interfaces (0.0.0.0) and port 7860
     # to allow external access (e.g., on AWS ECS).
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=7860
-    )
+    demo.launch(server_name="0.0.0.0", server_port=7860)
 
-def _get_file_hashes(uploaded_files: List) -> frozenset:
+
+def _get_file_hashes(uploaded_files: list) -> frozenset:
     """Generate SHA-256 hashes for uploaded files."""
     hashes = set()
     for file in uploaded_files:
         with open(file.name, "rb") as f:
             hashes.add(hashlib.sha256(f.read()).hexdigest())
     return frozenset(hashes)
+
 
 if __name__ == "__main__":
     main()

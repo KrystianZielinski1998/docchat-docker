@@ -1,11 +1,11 @@
 
-from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
-from langchain.schema.output_parser import StrOutputParser
-from typing import Dict, List
 from langchain.schema import Document
-import json  
+from langchain.schema.output_parser import StrOutputParser
+from langchain_openai import ChatOpenAI
+
 from utils.logging import logger
+
 
 class VerificationAgent:
     def __init__(self):
@@ -16,9 +16,9 @@ class VerificationAgent:
         # Initialize the ChatOpenAI llm model
         logger.info("Initializing VerificationAgent with ChatOpenAI...")
         self.llm = ChatOpenAI(
-            model="gpt-4o-mini", 
-            max_tokens=200,          
-            temperature=0.0,           
+            model="gpt-4o-mini",
+            max_tokens=200,
+            temperature=0.0,
         )
         logger.info("VerificationAgent initialized successfully.")
 
@@ -55,25 +55,35 @@ class VerificationAgent:
             """
         )
 
-    def parse_verification_response(self, response_text: str) -> Dict:
+    def parse_verification_response(self, response_text: str) -> dict:
         """
         Parse the LLM's verification response into a structured dictionary.
         """
         try:
-            lines = response_text.split('\n')
+            lines = response_text.split("\n")
             verification = {}
             for line in lines:
-                if ':' in line:
-                    key, value = line.split(':', 1)
+                if ":" in line:
+                    key, value = line.split(":", 1)
                     key = key.strip().capitalize()
                     value = value.strip()
-                    if key in {"Supported", "Unsupported claims", "Contradictions", "Relevant", "Additional details"}:
+                    if key in {
+                        "Supported",
+                        "Unsupported claims",
+                        "Contradictions",
+                        "Relevant",
+                        "Additional details",
+                    }:
                         if key in {"Unsupported claims", "Contradictions"}:
                             # Convert string list to actual list
-                            if value.startswith('[') and value.endswith(']'):
-                                items = value[1:-1].split(',')
+                            if value.startswith("[") and value.endswith("]"):
+                                items = value[1:-1].split(",")
                                 # Remove any surrounding quotes and whitespace
-                                items = [item.strip().strip('"').strip("'") for item in items if item.strip()]
+                                items = [
+                                    item.strip().strip('"').strip("'")
+                                    for item in items
+                                    if item.strip()
+                                ]
                                 verification[key] = items
                             else:
                                 verification[key] = []
@@ -82,7 +92,13 @@ class VerificationAgent:
                         else:
                             verification[key] = value.upper()
             # Ensure all keys are present
-            for key in ["Supported", "Unsupported Claims", "Contradictions", "Relevant", "Additional Details"]:
+            for key in [
+                "Supported",
+                "Unsupported Claims",
+                "Contradictions",
+                "Relevant",
+                "Additional Details",
+            ]:
                 if key not in verification:
                     if key in {"Unsupported Claims", "Contradictions"}:
                         verification[key] = []
@@ -96,8 +112,7 @@ class VerificationAgent:
             logger.error(f"Error parsing verification response: {e}")
             return "NO_MATCH"
 
-
-    def format_verification_report(self, verification: Dict) -> str:
+    def format_verification_report(self, verification: dict) -> str:
         """
         Format the verification report dictionary into a readable paragraph.
         """
@@ -111,27 +126,29 @@ class VerificationAgent:
         if unsupported_claims:
             report += f"**Unsupported Claims:** {', '.join(unsupported_claims)}\n"
         else:
-            report += f"**Unsupported Claims:** None\n"
+            report += "**Unsupported Claims:** None\n"
 
         if contradictions:
             report += f"**Contradictions:** {', '.join(contradictions)}\n"
         else:
-            report += f"**Contradictions:** None\n"
+            report += "**Contradictions:** None\n"
 
         report += f"**Relevant:** {relevant}\n"
 
         if additional_details:
             report += f"**Additional Details:** {additional_details}\n"
         else:
-            report += f"**Additional Details:** None\n"
+            report += "**Additional Details:** None\n"
 
         return report
 
-    def check(self, answer: str, documents: List[Document]) -> Dict:
+    def check(self, answer: str, documents: list[Document]) -> dict:
         """
         Verify the answer against the provided documents.
         """
-        logger.debug(f"VerificationAgent.check called with answer='{answer}' and {len(documents)} documents.")
+        logger.debug(
+            f"VerificationAgent.check called with answer='{answer}' and {len(documents)} documents."
+        )
 
         # Combine all document contents into one string without truncation
         context = "\n\n".join([doc.page_content for doc in documents])
@@ -146,10 +163,7 @@ class VerificationAgent:
 
         # Call the LLM to generate the verification report
         try:
-            llm_response = chain.invoke({
-                "answer": answer,   
-                "context": context 
-            })
+            llm_response = chain.invoke({"answer": answer, "context": context})
         except Exception as e:
             logger.error(f"Error during model inference: {e}")
             raise RuntimeError("Failed to verify answer due to a model error.") from e
@@ -164,14 +178,16 @@ class VerificationAgent:
                 "Unsupported Claims": [],
                 "Contradictions": [],
                 "Relevant": "NO",
-                "Additional Details": "Invalid response structure from the model."
+                "Additional Details": "Invalid response structure from the model.",
             }
-            verification_report_formatted = self.format_verification_report(verification_report)
+            verification_report_formatted = self.format_verification_report(
+                verification_report
+            )
             logger.debug(f"Verification report:\n{verification_report_formatted}")
             logger.debug(f"Context used: {context}")
             return {
                 "verification_report": verification_report_formatted,
-                "context_used": context
+                "context_used": context,
             }
 
         # Sanitize the response
@@ -183,27 +199,31 @@ class VerificationAgent:
                 "Unsupported Claims": [],
                 "Contradictions": [],
                 "Relevant": "NO",
-                "Additional Details": "Empty response from the model."
+                "Additional Details": "Empty response from the model.",
             }
         else:
             # Parse the response into the expected format
             verification_report = self.parse_verification_response(stripped_response)
             if verification_report is None:
-                logger.debug("LLM did not respond with the expected format. Using default verification report.")
+                logger.debug(
+                    "LLM did not respond with the expected format. Using default verification report."
+                )
                 verification_report = {
                     "Supported": "NO",
                     "Unsupported Claims": [],
                     "Contradictions": [],
                     "Relevant": "NO",
-                    "Additional Details": "Failed to parse the model's response."
+                    "Additional Details": "Failed to parse the model's response.",
                 }
 
         # Format the verification report into a paragraph
-        verification_report_formatted = self.format_verification_report(verification_report)
+        verification_report_formatted = self.format_verification_report(
+            verification_report
+        )
         logger.debug(f"Verification report:\n{verification_report_formatted}")
         logger.debug(f"Context used: {context}")
 
         return {
             "verification_report": verification_report_formatted,
-            "context_used": context
+            "context_used": context,
         }

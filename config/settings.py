@@ -1,6 +1,8 @@
+
 from pydantic_settings import BaseSettings
-from .constants import MAX_FILE_SIZE, MAX_TOTAL_SIZE, ALLOWED_TYPES
-import os
+
+from .constants import ALLOWED_TYPES, MAX_FILE_SIZE, MAX_TOTAL_SIZE
+
 
 class Settings(BaseSettings):
     # Required settings
@@ -29,5 +31,6 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+
 
 settings = Settings()
