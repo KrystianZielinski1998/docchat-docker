@@ -1,6 +1,6 @@
 # Fork Improvements
 
-This repository is a fork of the original **DocChat** project with additional improvements focused on containerization, automated code quality checks, and cloud deployment. 
+This repository is a fork of the original **DocChat** project with additional improvements focused on containerization, automated code quality checks, and cloud deployment. The application improvements included migrating the agent models from the WatsonX interface to OpenAI-compatible models using LangChain, along with enhanced logging.
 
 ## Added Features
 
